@@ -1,0 +1,362 @@
+--// Ghleo
+--// LocalScript
+--// ใส่ใน StarterPlayer > StarterPlayerScripts
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local Player = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+local Character
+local Humanoid
+local Root
+
+local Settings = {
+	Fly = false,
+	FlySpeed = 60,
+
+	HighJump = false,
+	JumpPower = 100,
+
+	Noclip = false,
+	ESP = false,
+	Invisible = false,
+}
+
+local function CharacterSetup(char)
+	Character = char
+	Humanoid = char:WaitForChild("Humanoid")
+	Root = char:WaitForChild("HumanoidRootPart")
+
+	Humanoid.UseJumpPower = true
+
+	if Settings.HighJump then
+		Humanoid.JumpPower = Settings.JumpPower
+	end
+end
+
+CharacterSetup(Player.Character or Player.CharacterAdded:Wait())
+
+Player.CharacterAdded:Connect(function(char)
+	task.wait(0.5)
+	CharacterSetup(char)
+end)
+
+--==================================================
+-- GUI
+--==================================================
+
+local Gui = Instance.new("ScreenGui")
+Gui.Name = "Ghleo"
+Gui.ResetOnSpawn = false
+Gui.Parent = Player:WaitForChild("PlayerGui")
+
+local Main = Instance.new("Frame")
+Main.Name = "GhleoMain"
+Main.Size = UDim2.fromOffset(250, 390)
+Main.Position = UDim2.new(0, 20, 0.5, -195)
+Main.BackgroundColor3 = Color3.fromRGB(25,25,25)
+Main.BorderSizePixel = 0
+Main.Parent = Gui
+
+local Corner = Instance.new("UICorner")
+Corner.CornerRadius = UDim.new(0,10)
+Corner.Parent = Main
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1,0,0,45)
+Title.BackgroundColor3 = Color3.fromRGB(40,40,40)
+Title.Text = "Ghleo"
+Title.TextColor3 = Color3.new(1,1,1)
+Title.TextSize = 24
+Title.Font = Enum.Font.GothamBold
+Title.Parent = Main
+
+local function CreateToggle(name, y, callback)
+	local Button = Instance.new("TextButton")
+	Button.Size = UDim2.new(1,-20,0,42)
+	Button.Position = UDim2.fromOffset(10,y)
+	Button.BackgroundColor3 = Color3.fromRGB(55,55,55)
+	Button.TextColor3 = Color3.new(1,1,1)
+	Button.TextSize = 16
+	Button.Font = Enum.Font.Gotham
+	Button.Text = name .. " : OFF"
+	Button.Parent = Main
+
+	local c = Instance.new("UICorner")
+	c.CornerRadius = UDim.new(0,7)
+	c.Parent = Button
+
+	local Enabled = false
+
+	Button.MouseButton1Click:Connect(function()
+		Enabled = not Enabled
+		Button.Text = name .. " : " .. (Enabled and "ON" or "OFF")
+		callback(Enabled)
+	end)
+
+	return Button
+end
+
+--==================================================
+-- บิน
+--==================================================
+
+CreateToggle("บิน",55,function(state)
+	Settings.Fly = state
+
+	if not state and Root then
+		Root.AssemblyLinearVelocity = Vector3.zero
+	end
+end)
+
+--==================================================
+-- กระโดดสูง
+--==================================================
+
+CreateToggle("กระโดดสูง",105,function(state)
+	Settings.HighJump = state
+
+	if Humanoid then
+		Humanoid.UseJumpPower = true
+		Humanoid.JumpPower = state and Settings.JumpPower or 50
+	end
+end)
+
+-- ช่องปรับกระโดด
+local JumpBox = Instance.new("TextBox")
+JumpBox.Size = UDim2.fromOffset(110,35)
+JumpBox.Position = UDim2.fromOffset(130,153)
+JumpBox.BackgroundColor3 = Color3.fromRGB(50,50,50)
+JumpBox.TextColor3 = Color3.new(1,1,1)
+JumpBox.PlaceholderText = "Jump Power"
+JumpBox.Text = tostring(Settings.JumpPower)
+JumpBox.TextSize = 14
+JumpBox.Parent = Main
+
+JumpBox.FocusLost:Connect(function()
+	local value = tonumber(JumpBox.Text)
+
+	if value then
+		Settings.JumpPower = math.clamp(value,1,500)
+
+		if Settings.HighJump and Humanoid then
+			Humanoid.JumpPower = Settings.JumpPower
+		end
+	end
+end)
+
+local JumpLabel = Instance.new("TextLabel")
+JumpLabel.Size = UDim2.fromOffset(110,35)
+JumpLabel.Position = UDim2.fromOffset(10,153)
+JumpLabel.BackgroundTransparency = 1
+JumpLabel.Text = "ค่ากระโดด:"
+JumpLabel.TextColor3 = Color3.new(1,1,1)
+JumpLabel.TextSize = 14
+JumpLabel.Parent = Main
+
+--==================================================
+-- ทะลุกำแพง
+--==================================================
+
+CreateToggle("ทะลุกำแพง",195,function(state)
+	Settings.Noclip = state
+end)
+
+--==================================================
+-- มองทะลุกำแพง
+--==================================================
+
+CreateToggle("มองทะลุกำแพง",245,function(state)
+	Settings.ESP = state
+end)
+
+--==================================================
+-- ล่องหน
+--==================================================
+
+CreateToggle("ล่องหน",295,function(state)
+	Settings.Invisible = state
+end)
+
+--==================================================
+-- ปรับความเร็วบิน
+--==================================================
+
+local FlyLabel = Instance.new("TextLabel")
+FlyLabel.Size = UDim2.fromOffset(110,35)
+FlyLabel.Position = UDim2.fromOffset(10,345)
+FlyLabel.BackgroundTransparency = 1
+FlyLabel.Text = "ความเร็วบิน:"
+FlyLabel.TextColor3 = Color3.new(1,1,1)
+FlyLabel.TextSize = 14
+FlyLabel.Parent = Main
+
+local FlyBox = Instance.new("TextBox")
+FlyBox.Size = UDim2.fromOffset(110,35)
+FlyBox.Position = UDim2.fromOffset(130,345)
+FlyBox.BackgroundColor3 = Color3.fromRGB(50,50,50)
+FlyBox.TextColor3 = Color3.new(1,1,1)
+FlyBox.Text = tostring(Settings.FlySpeed)
+FlyBox.TextSize = 14
+FlyBox.Parent = Main
+
+FlyBox.FocusLost:Connect(function()
+	local value = tonumber(FlyBox.Text)
+
+	if value then
+		Settings.FlySpeed = math.clamp(value,1,300)
+		FlyBox.Text = tostring(Settings.FlySpeed)
+	end
+end)
+
+--==================================================
+-- NOCLIP
+--==================================================
+
+RunService.Stepped:Connect(function()
+
+	if Character and Settings.Noclip then
+		for _,obj in ipairs(Character:GetDescendants()) do
+			if obj:IsA("BasePart") then
+				obj.CanCollide = false
+			end
+		end
+	end
+
+end)
+
+--==================================================
+-- ล่องหน
+--==================================================
+
+RunService.RenderStepped:Connect(function()
+
+	if not Character then return end
+
+	for _,obj in ipairs(Character:GetDescendants()) do
+
+		if obj:IsA("BasePart") then
+
+			if obj.Name ~= "HumanoidRootPart" then
+				obj.LocalTransparencyModifier =
+					Settings.Invisible and 1 or 0
+			end
+
+		elseif obj:IsA("Decal") then
+
+			obj.Transparency =
+				Settings.Invisible and 1 or 0
+
+		end
+	end
+end)
+
+--==================================================
+-- ESP มองทะลุกำแพง
+--==================================================
+
+local function AddESP(char)
+
+	if char == Character then
+		return
+	end
+
+	if char:FindFirstChild("GhleoESP") then
+		return
+	end
+
+	local Highlight = Instance.new("Highlight")
+	Highlight.Name = "GhleoESP"
+	Highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+	Highlight.FillTransparency = 0.5
+	Highlight.OutlineTransparency = 0
+	Highlight.Parent = char
+end
+
+local function RemoveESP()
+
+	for _,plr in ipairs(Players:GetPlayers()) do
+
+		if plr.Character then
+			local esp = plr.Character:FindFirstChild("GhleoESP")
+
+			if esp then
+				esp:Destroy()
+			end
+		end
+	end
+end
+
+RunService.RenderStepped:Connect(function()
+
+	if Settings.ESP then
+
+		for _,plr in ipairs(Players:GetPlayers()) do
+
+			if plr ~= Player and plr.Character then
+				AddESP(plr.Character)
+			end
+
+		end
+
+	else
+		RemoveESP()
+	end
+
+end)
+
+--==================================================
+-- FLY
+--==================================================
+
+RunService.RenderStepped:Connect(function()
+
+	if not Settings.Fly then
+		return
+	end
+
+	if not Character or not Humanoid or not Root then
+		return
+	end
+
+	local Move = Vector3.zero
+
+	if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+		Move += Camera.CFrame.LookVector
+	end
+
+	if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+		Move -= Camera.CFrame.LookVector
+	end
+
+	if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+		Move -= Camera.CFrame.RightVector
+	end
+
+	if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+		Move += Camera.CFrame.RightVector
+	end
+
+	if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+		Move += Vector3.new(0,1,0)
+	end
+
+	if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
+		Move -= Vector3.new(0,1,0)
+	end
+
+	if Move.Magnitude > 0 then
+
+		Root.AssemblyLinearVelocity =
+			Move.Unit * Settings.FlySpeed
+
+	else
+
+		Root.AssemblyLinearVelocity =
+			Vector3.zero
+
+	end
+end)
